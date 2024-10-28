@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winery Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+</head>
+<body>
+    <main>
+        <div id="title-container">
+            <h2>Winery Map</h2>
+        </div>
+        <div id="map"></div>
+        <div class="search-container">
+            <input type="text" id="search-bar" placeholder="Search..." autocomplete="off">
+            <div id="autocomplete-list" class="autocomplete-items"></div>
+            <div id="selected-items" class="selected-items"></div>
+        </div>
+    </main>
+    <script src="main.js"></script>
+</body>
+</html>
