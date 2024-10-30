@@ -4,6 +4,7 @@
 // - Display vineyards as markers, switch to regions when zoomed out
 // - Debounce the rendering of markers
 // - Selecting a region, will zoom and only show the vineyards in that region
+// - Search for vineyards and regions
 // - Display grape varieties for some wineries
 
 const map = L.map('map', {
@@ -45,7 +46,7 @@ const customZoomControl = L.Control.extend({
 // Add the custom zoom control to the map
 map.addControl(new customZoomControl());
 
-map.attributionControl.setPrefix("&copy; 2024 World Wine Map. Cheers! 🍷")
+map.attributionControl.setPrefix("&copy; 2024 Winery Map. Cheers! 🍷<a href='https://github.com/oOo0oOo/winerymap'>Github</a>")
 L.tileLayer(tileURL, { attribution: attributionText }).addTo(map);
 
 const zoomThreshold = 8.5;
