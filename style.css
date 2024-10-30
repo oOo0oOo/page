@@ -214,3 +214,10 @@ h2 {
 .leaflet-popup-tip {
     background-color: #f7f6f3ee;
 }
+
+.report-link {
+    font-size: 8pt;
+    color: #da918f !important;
+    text-align: right;
+    display: block;
+}

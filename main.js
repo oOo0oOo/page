@@ -17,6 +17,7 @@ const map = L.map('map', {
 
 const tileURL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const attributionText = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const reportFormURL = 'https://docs.google.com/forms/d/e/1FAIpQLSe7_vzqYRUW1_9c4T6fvoIiNX0DATkHjPp4JtY1BS07zIW6yA/viewform'
 
 // Create a custom zoom control
 const customZoomControl = L.Control.extend({
@@ -84,6 +85,78 @@ fetch("grape_names.json")
         console.log(`Loaded ${grapeVarieties.length} grape varieties`);
 }).catch(error => console.error('Error fetching grape names:', error));
 
+
+const createVineyardMarker = (vineyard, region, color) => {
+    const latLng = [vineyard[0], vineyard[1]];
+    let popupContent = `
+        <span class="popup-title">${vineyard[2]}</span><br>
+        ${vineyard[3] ? `<br><a href="${vineyard[3]}" target="_blank">${vineyard[3].replace(/(^\w+:|^)\/\//, '')}</a>&nbsp;↗️<br>` : ''}
+        <br>Region: <a href="#" class="region-link" data-region="${region}">${region}</a>
+    `;
+
+    let markerColor = color;
+    if (vineyard[4].length > 0) {
+        const varietiesContent = getGrapeVarietiesContent(vineyard[4]);
+        popupContent += varietiesContent.content;
+        markerColor = 'black';
+    }
+    
+    // Report bad data via google forms
+    const reportLink = reportFormURL + `?usp=pp_url&entry.1287891387=${encodeURIComponent(vineyard[2])}`;
+    popupContent += `<br><br><a class="report-link" href="${reportLink}" target="_blank">Report bad data</a>`;
+
+    return L.circleMarker(latLng, {
+        radius: markerRadius,
+        color: markerColor,
+        weight: 1,
+        fillColor: color,
+        fillOpacity: 1,
+        region: region
+    }).bindPopup(popupContent);
+};
+
+const createRegionMarker = (region, latLng, color, vineyards) => {
+    const popupContent = `
+        <span class="popup-title">${region}</span><br><br>Number of vineyards: ${vineyards.length}<br><br>
+        <a href="#" class="region-link" data-region="${region}">Highlight Region</a>
+    `;
+    return L.circleMarker(latLng, {
+        radius: regionRadius,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.9,
+        region: region
+    }).bindPopup(popupContent);
+};
+
+const getGrapeVarietiesContent = (varieties) => {
+    let reds = [], whites = [], roses = [];
+    varieties.forEach(vari => {
+        const variety = grapeNames[vari];
+        let name = variety[0];
+        if (grapeVarieties[variety[1]][0] !== variety[0]) {
+            name = `${variety[0]} (${grapeVarieties[variety[1]][0]})`;
+        }
+        const col = grapeVarieties[variety[1]][1];
+        if (col === 0) reds.push(name);
+        else if (col === 1) whites.push(name);
+        else if (col === 2) roses.push(name);
+    });
+
+    let content = '';
+    if (reds.length > 0) content += `<br><br>Red Grapes: ${reds.join(', ')}`;
+    if (whites.length > 0) content += `<br><br>White Grapes: ${whites.join(', ')}`;
+    if (roses.length > 0) content += `<br><br>Rosé Grapes: ${roses.join(', ')}`;
+
+    return { content, markerColor: 'black' };
+};
+
+const updateMarkers = (newMarkers, currentMarkers, markersLayer) => {
+    currentMarkers.forEach((marker, key) => {
+        if (!newMarkers.has(key)) markersLayer.removeLayer(marker);
+    });
+};
+
 const renderMarkers = (data, regionCenters) => {
     return () => {
         const bounds = map.getBounds();
@@ -100,69 +173,16 @@ const renderMarkers = (data, regionCenters) => {
                         if (bounds.contains(latLng)) {
                             const markerKey = `${vineyard[0]},${vineyard[1]}`;
                             if (!currentMarkers.has(markerKey)) {
-                                var popupContent = `
-                                    <span class="popup-title">${vineyard[2]}</span><br>
-                                    ${vineyard[3] ? `<br><a href="${vineyard[3]}" target="_blank">${vineyard[3].replace(/(^\w+:|^)\/\//, '')}</a>&nbsp;↗️<br>` : ''}
-                                    <br>Region: <a href="#" class="region-link" data-region="${region}">${region}</a>
-                                `;
-
-                                // Add grape varieties if available 
-                                var markerColor = color;
-                                if (vineyard[4].length > 0) {
-                                    const varieties = vineyard[4];
-
-                                    reds = [];  
-                                    whites = [];
-                                    roses = [];
-                                    for (const vari of varieties){
-                                        const variety = grapeNames[vari];
-                                        var name = variety[0];
-                                        if (grapeVarieties[variety[1]][0] !== variety[0]){
-                                            name = `${variety[0]} (${grapeVarieties[variety[1]][0]})`;
-                                        }
-
-                                        const col = grapeVarieties[variety[1]][1];
-
-                                        if (col === 0){
-                                            reds.push(name);
-                                        } else if (col === 1){
-                                            whites.push(name);
-                                        } else if (col === 2){
-                                            roses.push(name);
-                                        }
-                                    }
-
-                                    if (reds.length > 0) {
-                                        popupContent += `<br><br>Red Grapes: ${reds.join(', ')}`;
-                                    }
-                                    if (whites.length > 0) {
-                                        popupContent += `<br><br>White Grapes: ${whites.join(', ')}`;
-                                    }
-                                    if (roses.length > 0) {
-                                        popupContent += `<br><br>Rosé Grapes: ${roses.join(', ')}`;
-                                    }
-                                    markerColor = 'black';
-                                }
-
-                                const marker = L.circleMarker(latLng, {
-                                    radius: markerRadius,
-                                    color: markerColor,
-                                    weight: 1,
-                                    fillColor: color,
-                                    fillOpacity: 1,
-                                    region: region
-                                }).bindPopup(popupContent);
+                                const marker = createVineyardMarker(vineyard, region, color);
                                 markersLayer.addLayer(marker);
                                 newMarkers.set(markerKey, marker);
 
-                                // Add the css class if we have currently selected region
                                 if (currentRegion && currentRegion !== region) {
                                     const markerElement = marker.getElement();
                                     if (markerElement) {
                                         markerElement.classList.add('hidden-marker');
                                     }
                                 }
-
                             } else {
                                 newMarkers.set(markerKey, currentMarkers.get(markerKey));
                             }
@@ -175,29 +195,16 @@ const renderMarkers = (data, regionCenters) => {
                     if (bounds.contains(latLng)) {
                         const markerKey = `${lat},${lon}`;
                         if (!regionMarkers.has(markerKey)) {
-                            const popupContent = `
-                                <span class="popup-title">${region}</span><br><br>Number of vineyards: ${vineyards.length}<br><br>
-                                <a href="#" class="region-link" data-region="${region}">Highlight Region</a>
-                            `;
-                            const marker = L.circleMarker(latLng, {
-                                radius: regionRadius,
-                                color: color,
-                                fillColor: color,
-                                fillOpacity: 0.9,
-                                region: region
-                            }).bindPopup(popupContent);
+                            const marker = createRegionMarker(region, latLng, color, vineyards);
                             markersLayer.addLayer(marker);
                             regionMarkers.set(markerKey, marker);
 
-
-                            // Add the css class if we have currently selected region
                             if (currentRegion && currentRegion !== region) {
                                 const markerElement = marker.getElement();
                                 if (markerElement) {
                                     markerElement.classList.add('hidden-marker');
                                 }
                             }
-
                         } else {
                             regionMarkers.set(markerKey, regionMarkers.get(markerKey));
                         }
@@ -206,9 +213,7 @@ const renderMarkers = (data, regionCenters) => {
             }
         }
 
-        currentMarkers.forEach((marker, key) => {
-            if (!newMarkers.has(key)) markersLayer.removeLayer(marker);
-        });
+        updateMarkers(newMarkers, currentMarkers, markersLayer);
 
         if (zoomLevel > zoomThreshold) {
             regionMarkers.forEach(marker => markersLayer.removeLayer(marker));
