@@ -325,7 +325,7 @@ function toggleRegion(region="", coords=null) {
                 flyToMarker();
             });
 
-        }, 150);
+        }, 250);
     }
 }
 
