@@ -290,40 +290,47 @@ function toggleRegion(region="", coords=null) {
     document.body.offsetHeight;
 
     // Smooth zoom to the region center
-    if (currentRegion !== "") {
-        setTimeout(() => {
-
-            function flyToMarker(){
-                if (coords) {
-                    setTimeout(() => {
-                        // Find the actual marker
-                        const marker = currentMarkers.get(`${coords[0]},${coords[1]}`);
-                        marker.openPopup();
-                        map.flyTo(marker.getLatLng(), 11, {
-                            animate: true,
-                            duration: 1
-                        });
-                    }, 600);
-                }
-            }
-
-            const regionCenter = regionCenters[region];
-            if (regionCenter){
-                map.flyTo([regionCenter.lat, regionCenter.lon], 10, {
+    if (currentRegion !== "" || coords) {
+        function flyToMarker(){
+            setTimeout(() => {
+                // Find the actual marker
+                const marker = currentMarkers.get(`${coords[0]},${coords[1]}`);
+                marker.openPopup();
+                map.flyTo(marker.getLatLng(), 11, {
                     animate: true,
                     duration: 1
                 });
-            } else if (coords) {
-                map.flyTo(coords, 10, {
-                    animate: true,
-                    duration: 2
-                });
-            }
+            }, 500);
+        }
+
+        const regionCenter = regionCenters[region];
+        if (regionCenter){
+            map.flyTo([regionCenter.lat, regionCenter.lon], 10, {
+                animate: true,
+                duration: 2
+            });
+        } else if (coords) {
+            // If unknown region, fly to the selected vineyard
+            map.flyTo(coords, 10, {
+                animate: true,
+                duration: 2
+            });
+        }
+
+        if (coords) {
+            // Check if we have to zoom (not currently zoom 10)
+            let finishedZoom = false;
+            let finishedMove = false;
             map.once('moveend', function() {
-                flyToMarker();
+                if (finishedZoom) flyToMarker();
+                finishedMove = true;
             });
 
-        }, 250);
+            map.once('zoomend', function() {
+                if (finishedMove) flyToMarker();
+                finishedZoom = true;
+            });
+        }
     }
 }
 
