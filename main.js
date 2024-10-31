@@ -52,7 +52,7 @@ L.tileLayer(tileURL, { attribution: attributionText }).addTo(map);
 
 const zoomThreshold = 8.5;
 const unknownZoomThreshold = 6;
-let currentMarkers = new Map();
+let vineyardMarkers = new Map();
 const regionMarkers = new Map();
 const markersLayer = L.layerGroup().addTo(map);
 
@@ -140,79 +140,92 @@ const getGrapeVarietiesContent = (varieties) => {
 };
 
 
-const updateMarkers = (newMarkers, currentMarkers, markersLayer) => {
-    currentMarkers.forEach((marker, key) => {
-        if (!newMarkers.has(key)) markersLayer.removeLayer(marker);
-    });
-};
+const renderMarkers = () => {
+    const bounds = map.getBounds();
+    const zoomLevel = map.getZoom();
+    const newMarkers = new Map();
+    const mapCenter = map.getCenter();
+    const showingUnknown = zoomLevel > unknownZoomThreshold;
+    const showingVineyards = zoomLevel > zoomThreshold;
 
+    let markersToAdd = [];
 
-const renderMarkers = (data, regionCenters) => {
-    return () => {
-        const bounds = map.getBounds();
-        const zoomLevel = map.getZoom();
-        const newMarkers = new Map();
+    for (const region in data) {
+        const isUnknown = region === "Unknown";
+        const regionCenter = isUnknown ? [0, 0] : regionCenters[region];
+        let regionVisible = isUnknown ? true: bounds.contains(regionCenter);
 
-        for (const region in data) {
-            if (data.hasOwnProperty(region)) {
-                const { color, vineyards } = data[region];
+        if (showingVineyards || (isUnknown && showingUnknown)) {
+            // Skip regions that are too far away
+            if (!regionVisible) {
+                const distance = mapCenter.distanceTo(regionCenter);
+                if (distance > 250000) continue;
+            }
 
-                if ((region === "Unknown" && zoomLevel > unknownZoomThreshold) || zoomLevel > zoomThreshold) {
-                    vineyards.forEach(vineyard => {
-                        const latLng = [vineyard[0], vineyard[1]];
-                        if (bounds.contains(latLng)) {
-                            const markerKey = `${vineyard[0]},${vineyard[1]}`;
-                            if (!currentMarkers.has(markerKey)) {
-                                const marker = createVineyardMarker(vineyard, region, color);
-                                markersLayer.addLayer(marker);
-                                newMarkers.set(markerKey, marker);
-
-                                if (currentRegion && currentRegion !== region) {
-                                    const markerElement = marker.getElement();
-                                    if (markerElement) {
-                                        markerElement.classList.add('hidden-marker');
-                                    }
-                                }
-                            } else {
-                                newMarkers.set(markerKey, currentMarkers.get(markerKey));
-                            }
-                        }
-                    });
-                } else if (region !== "Unknown" && zoomLevel <= zoomThreshold) {
-                    const { lat, lon } = regionCenters[region];
-                    const latLng = [lat, lon];
-
-                    if (bounds.contains(latLng)) {
-                        const markerKey = `${lat},${lon}`;
-                        if (!regionMarkers.has(markerKey)) {
-                            const marker = createRegionMarker(region, latLng, color, vineyards);
-                            markersLayer.addLayer(marker);
-                            regionMarkers.set(markerKey, marker);
-
-                            if (currentRegion && currentRegion !== region) {
-                                const markerElement = marker.getElement();
-                                if (markerElement) {
-                                    markerElement.classList.add('hidden-marker');
-                                }
-                            }
-                        } else {
-                            regionMarkers.set(markerKey, regionMarkers.get(markerKey));
-                        }
+            const { color, vineyards } = data[region];
+            vineyards.forEach(vineyard => {
+                const latLng = [vineyard[0], vineyard[1]];
+                if (bounds.contains(latLng)) {
+                    const markerKey = `${vineyard[0]},${vineyard[1]}`;
+                    if (!vineyardMarkers.has(markerKey)) {
+                        const marker = createVineyardMarker(vineyard, region, color);
+                        markersToAdd.push(marker);
+                        newMarkers.set(markerKey, marker);
+                    } else {
+                        newMarkers.set(markerKey, vineyardMarkers.get(markerKey));
                     }
                 }
+            });
+        } else if (regionVisible && !isUnknown && !showingVineyards) {
+            if (!regionMarkers.has(region)) {
+                const { color, vineyards } = data[region];
+                const marker = createRegionMarker(region, regionCenter, color, vineyards);
+                markersToAdd.push(marker);
+                regionMarkers.set(region, marker);
             }
         }
-
-        updateMarkers(newMarkers, currentMarkers, markersLayer);
-
-        if (zoomLevel > zoomThreshold) {
-            regionMarkers.forEach(marker => markersLayer.removeLayer(marker));
-            regionMarkers.clear();
-        }
-
-        currentMarkers = newMarkers;
     }
+
+    // Add new markers
+    markersToAdd.forEach(marker => markersLayer.addLayer(marker));
+
+    // Remove markers that are not in the new set
+    vineyardMarkers.forEach((marker, key) => {
+        if (!newMarkers.has(key)) markersLayer.removeLayer(marker);
+    });
+
+    // Remove region markers if zoomed in
+    if (showingVineyards) {
+        regionMarkers.forEach(marker => markersLayer.removeLayer(marker));
+        regionMarkers.clear();
+    }
+
+    // Hide vineyard markers if a region is selected
+    if (currentRegion !== "") {
+        newMarkers.forEach(marker => {
+            const markerRegion = marker.options.region;
+            if (markerRegion !== currentRegion) {
+                const markerElement = marker.getElement();
+                if (markerElement) {
+                    markerElement.classList.add('hidden-marker');
+                }
+            }
+        });
+
+        regionMarkers.forEach(marker => {
+            const markerRegion = marker.options.region;
+            if (markerRegion !== currentRegion) {
+                const markerElement = marker.getElement();
+                if (markerElement) {
+                    markerElement.classList.add('hidden-marker');
+                }
+            }
+        });
+    }
+
+    vineyardMarkers = newMarkers;
 };
+
 
 const debounce = (func, wait) => {
     let timeout;
@@ -222,27 +235,30 @@ const debounce = (func, wait) => {
     };
 };
 
-var regionCenters = {};
+
+let regionCenters = {};
+let data;
 fetch('vineyards.json')
     .then(response => response.json())
-    .then(data => {
-        setupSearch(data);
+    .then(dataRaw => {
+        data = dataRaw;
+        setupSearch();
 
-        var numVineyards = 0;
+        let numVineyards = 0;
         for (const region in data) {
-            if (data.hasOwnProperty(region) && region !== "Unknown") {
+            if (region !== "Unknown") {
                 const vineyards = data[region].vineyards;
                 const { lat, lon } = vineyards.reduce((center, vineyard) => ({
                     lat: center.lat + vineyard[0],
                     lon: center.lon + vineyard[1]
                 }), { lat: 0, lon: 0 });
-                regionCenters[region] = { lat: lat / vineyards.length, lon: lon / vineyards.length };
+                regionCenters[region] = [lat / vineyards.length, lon / vineyards.length];
             }
             numVineyards += data[region].vineyards.length;
         }
         console.log(`Loaded ${numVineyards} vineyards in ${Object.keys(data).length} regions`);
 
-        const debouncedRenderMarkers = debounce(renderMarkers(data, regionCenters), 50);
+        const debouncedRenderMarkers = debounce(renderMarkers, 30);
         map.on('moveend', debouncedRenderMarkers);
         map.on('zoomend', debouncedRenderMarkers);
         debouncedRenderMarkers();
@@ -267,6 +283,16 @@ function toggleMarkers(markers, region, hide) {
     });
 }
 
+function showAllMarkers() {
+    vineyardMarkers.forEach(marker => {
+        marker.getElement().classList.remove('hidden-marker');
+    });
+
+    regionMarkers.forEach(marker => {
+        marker.getElement().classList.remove('hidden-marker');
+    });
+}
+
 
 function toggleRegion(region="", coords=null) {
     if (region === ""){
@@ -274,16 +300,11 @@ function toggleRegion(region="", coords=null) {
     }
 
     if (currentRegion === region) {
-        // If the region is already focused, show all markers
-        toggleMarkers(currentMarkers, region, false);
-        toggleMarkers(regionMarkers, region, false);
-        currentRegion = ''; // Reset to no current region
+        currentRegion = '';
         resetRegionTag();
+        showAllMarkers();
     } else {
-        // If the region is not focused, hide markers not in the selected region
-        toggleMarkers(currentMarkers, region, true);
-        toggleMarkers(regionMarkers, region, true);
-        currentRegion = region; // Set the current region
+        currentRegion = region;
         addRegionTag(region);
     }
 
@@ -294,7 +315,7 @@ function toggleRegion(region="", coords=null) {
         function flyToMarker(){
             setTimeout(() => {
                 // Find the actual marker
-                const marker = currentMarkers.get(`${coords[0]},${coords[1]}`);
+                const marker = vineyardMarkers.get(`${coords[0]},${coords[1]}`);
                 marker.openPopup();
                 map.flyTo(marker.getLatLng(), 11, {
                     animate: true,
@@ -303,9 +324,8 @@ function toggleRegion(region="", coords=null) {
             }, 500);
         }
 
-        const regionCenter = regionCenters[region];
-        if (regionCenter){
-            map.flyTo([regionCenter.lat, regionCenter.lon], 10, {
+        if (currentRegion !== "Unknown"){
+            map.flyTo(regionCenters[region], 10, {
                 animate: true,
                 duration: 2
             });
@@ -365,7 +385,7 @@ function resetRegionTag(){
     selectedItemsContainer.innerHTML = '';
 }
 
-function setupSearch(data) {
+function setupSearch() {
     // All auto-complete items
     const regions = Object.keys(data).filter(region => region !== "Unknown").map(region => `Region: ${region}`);
     const vineyards = Object.values(data).reduce((acc, { vineyards }) => [...acc, ...vineyards.map(vineyard => vineyard[2])], []);

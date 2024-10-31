@@ -8,16 +8,18 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta name="description" content="Explore 34k wineries from all around the globe.">
+    <meta name="keywords" content="winery, map, wine, vineyards">
 </head>
 <body>
     <main>
         <div id="title-container">
-            <h2>Winery Map</h2>
+            <h2>Winery<img id="logo" src="favicon.ico">Map</h2>
         </div>
-        <div id="map"></div>
+        <div id="map" aria-label="Winery Map"></div>
         <div class="search-container">
-            <input type="text" id="search-bar" placeholder="Search..." autocomplete="off">
-            <div id="autocomplete-list" class="autocomplete-items"></div>
+            <input type="text" id="search-bar" placeholder="Search..." autocomplete="off" aria-label="Search for wineries or wine regions">
+            <div id="autocomplete-list" class="autocomplete-items" aria-live="polite"></div>
             <div id="selected-items" class="selected-items"></div>
         </div>
     </main>

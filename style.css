@@ -32,17 +32,24 @@ main {
     top: 3vh;
     left: 50%;
     transform: translateX(-50%);
-    background-color: #dfd9cbcc;
+    background-color: #dfd9cb99;
     color: rgb(61, 15, 38);
     text-align: center;
     padding: 0px 10px;
-    border-radius: 30px;
-    box-shadow: 0px 0px 15px 15px #dfd9cbcc;
+    border-radius: 23px;
+    box-shadow: 0px 0px 12px 12px #dfd9cb99;
 }
 
 h2 {
     font-family: "Libre Caslon Text", serif;
     margin: 0px;
+}
+
+#logo {
+    width: 26px;
+    height: 26px;
+    margin: 0px 10px 0px 10px;
+    filter: brightness(0.75);
 }
 
 #map {
