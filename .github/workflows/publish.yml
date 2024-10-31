@@ -1,0 +1,30 @@
+name: Publish Github Action
+run-name: ${{ github.actor }} is publishing the website
+on: [push]
+jobs:
+  Publish-Website-Github-Action:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - run: echo "Uploading via FTP."
+
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Sync files via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: oli.show/public_html/wine/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            README.md
+            LICENSE
+
+      - run: echo "This job's status is ${{ job.status }}."

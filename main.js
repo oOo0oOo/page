@@ -56,14 +56,6 @@ let currentMarkers = new Map();
 const regionMarkers = new Map();
 const markersLayer = L.layerGroup().addTo(map);
 
-const debounce = (func, wait) => {
-    let timeout;
-    return (...args) => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-};
-
 var currentRegion = ''; // Empty string for no current region
 
 var grapeNames;
@@ -222,6 +214,13 @@ const renderMarkers = (data, regionCenters) => {
     }
 };
 
+const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+};
 
 var regionCenters = {};
 fetch('vineyards.json')
