@@ -66,14 +66,6 @@ const debounce = (func, wait) => {
 
 var currentRegion = ''; // Empty string for no current region
 
-
-var markerRadius = 5;
-var regionRadius = 6;
-if (window.innerWidth <= 600){
-    markerRadius = 5.5;
-    regionRadius = 6.5;
-}
-
 var grapeNames;
 var grapeVarieties;
 fetch("grape_names.json")
@@ -105,42 +97,46 @@ const createVineyardMarker = (vineyard, region, color) => {
     const reportLink = reportFormURL + `?usp=pp_url&entry.1287891387=${encodeURIComponent(vineyard[2])}`;
     popupContent += `<br><br><a class="report-link" href="${reportLink}" target="_blank">Report bad data</a>`;
 
-    return L.circleMarker(latLng, {
-        radius: markerRadius,
-        color: markerColor,
-        weight: 1,
-        fillColor: color,
-        fillOpacity: 1,
-        region: region
-    }).bindPopup(popupContent);
+    const icon = L.divIcon({
+        className: 'custom-marker-icon',
+        html: `<div class="custom-marker-icon" style="background-color:${color};border:solid 1px ${markerColor}"></div>`,
+        iconSize: [24, 24]
+    });
+    return L.marker(latLng, { icon: icon, region: region }).bindPopup(popupContent);
 };
+
 
 const createRegionMarker = (region, latLng, color, vineyards) => {
     const popupContent = `
         <span class="popup-title">${region}</span><br><br>Number of vineyards: ${vineyards.length}<br><br>
         <a href="#" class="region-link" data-region="${region}">Highlight Region</a>
     `;
-    return L.circleMarker(latLng, {
-        radius: regionRadius,
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.9,
-        region: region
-    }).bindPopup(popupContent);
+
+    const icon = L.divIcon({
+        className: 'custom-marker-region',
+        html: `<div class="custom-marker-region" style="background-color:${color}"></div>`,
+        iconSize: [32, 32]
+    });
+    return L.marker(latLng, { icon: icon, region: region }).bindPopup(popupContent);
 };
+
 
 const getGrapeVarietiesContent = (varieties) => {
     let reds = [], whites = [], roses = [];
     varieties.forEach(vari => {
         const variety = grapeNames[vari];
-        let name = variety[0];
-        if (grapeVarieties[variety[1]][0] !== variety[0]) {
-            name = `${variety[0]} (${grapeVarieties[variety[1]][0]})`;
+        if (variety) {
+            let name = variety[0];
+            if (grapeVarieties[variety[1]][0] !== variety[0]) {
+                name = `${variety[0]} (${grapeVarieties[variety[1]][0]})`;
+            }
+            const col = grapeVarieties[variety[1]][1];
+            if (col === 0) reds.push(name);
+            else if (col === 1) whites.push(name);
+            else if (col === 2) roses.push(name);
+        } else {
+            console.log(`Variety not found: ${vari}`);
         }
-        const col = grapeVarieties[variety[1]][1];
-        if (col === 0) reds.push(name);
-        else if (col === 1) whites.push(name);
-        else if (col === 2) roses.push(name);
     });
 
     let content = '';
@@ -151,11 +147,13 @@ const getGrapeVarietiesContent = (varieties) => {
     return { content, markerColor: 'black' };
 };
 
+
 const updateMarkers = (newMarkers, currentMarkers, markersLayer) => {
     currentMarkers.forEach((marker, key) => {
         if (!newMarkers.has(key)) markersLayer.removeLayer(marker);
     });
 };
+
 
 const renderMarkers = (data, regionCenters) => {
     return () => {
@@ -223,6 +221,7 @@ const renderMarkers = (data, regionCenters) => {
         currentMarkers = newMarkers;
     }
 };
+
 
 var regionCenters = {};
 fetch('vineyards.json')
@@ -292,7 +291,6 @@ function toggleRegion(region="", coords=null) {
     document.body.offsetHeight;
 
     // Smooth zoom to the region center
-    const regionCenter = regionCenters[region];
     if (currentRegion !== "") {
         setTimeout(() => {
 
@@ -306,10 +304,11 @@ function toggleRegion(region="", coords=null) {
                             animate: true,
                             duration: 1
                         });
-                    }, 250);
+                    }, 600);
                 }
             }
 
+            const regionCenter = regionCenters[region];
             if (regionCenter){
                 map.flyTo([regionCenter.lat, regionCenter.lon], 10, {
                     animate: true,

@@ -221,3 +221,17 @@ h2 {
     text-align: right;
     display: block;
 }
+
+.custom-marker-icon {
+    margin: 4.5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.custom-marker-region {
+    margin: 8px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+}
