@@ -159,13 +159,13 @@ const renderMarkers = () => {
             // Skip regions that are too far away
             if (!regionVisible) {
                 const distance = mapCenter.distanceTo(regionCenter);
-                if (distance > 250000) continue;
+                if (distance > 300000) continue;
             }
 
             const { color, vineyards } = data[region];
             vineyards.forEach(vineyard => {
                 const latLng = [vineyard[0], vineyard[1]];
-                if (bounds.contains(latLng)) {
+                if (currentRegion === region || bounds.contains(latLng)) {
                     const markerKey = `${vineyard[0]},${vineyard[1]}`;
                     if (!vineyardMarkers.has(markerKey)) {
                         const marker = createVineyardMarker(vineyard, region, color);
